@@ -1,93 +1,93 @@
 'use strict';
 import * as vscode from 'vscode';
 
-import { JestRunner } from './jestRunner';
-import { JestRunnerCodeLensProvider } from './JestRunnerCodeLensProvider';
-import { JestRunnerConfig } from './jestRunnerConfig';
+import { PytestRunner } from './pytestRunner';
+import { PytestRunnerCodeLensProvider } from './PytestRunnerCodeLensProvider';
+import { PytestRunnerConfig } from './pytestRunnerConfig';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const config = new JestRunnerConfig();
-  const jestRunner = new JestRunner(config);
-  const codeLensProvider = new JestRunnerCodeLensProvider(config.codeLensOptions);
+  const config = new PytestRunnerConfig();
+  const pytestRunner = new PytestRunner(config);
+  const codeLensProvider = new PytestRunnerCodeLensProvider(config.codeLensOptions);
 
-  const runJest = vscode.commands.registerCommand(
-    'extension.runJest',
+  const runPytest = vscode.commands.registerCommand(
+    'extension.runPytest',
     async (argument: Record<string, unknown> | string) => {
-      return jestRunner.runCurrentTest(argument);
+      return pytestRunner.runCurrentTest(argument);
     }
   );
 
-  const runJestCoverage = vscode.commands.registerCommand(
-    'extension.runJestCoverage',
+  const runPytestCoverage = vscode.commands.registerCommand(
+    'extension.runPytestCoverage',
     async (argument: Record<string, unknown> | string) => {
-      return jestRunner.runCurrentTest(argument, ['--coverage']);
+      return pytestRunner.runCurrentTest(argument, ['--cov']);
     }
   );
 
-  const runJestCurrentTestCoverage = vscode.commands.registerCommand(
-    'extension.runJestCurrentTestCoverage',
-    async (argument: Record<string, unknown> | string) => {
-      return jestRunner.runCurrentTest(argument, ['--coverage'], true);
-    }
+  const runPytestPath = vscode.commands.registerCommand('extension.runPytestPath', async (argument: vscode.Uri) =>
+    pytestRunner.runTestsOnPath(argument.fsPath)
   );
 
-  const runJestPath = vscode.commands.registerCommand('extension.runJestPath', async (argument: vscode.Uri) =>
-    jestRunner.runTestsOnPath(argument.fsPath)
+  const runPrevPytest = vscode.commands.registerCommand('extension.runPrevPytest', async () => 
+    pytestRunner.runPreviousTest()
   );
-  const runJestAndUpdateSnapshots = vscode.commands.registerCommand('extension.runJestAndUpdateSnapshots', async () => {
-    jestRunner.runCurrentTest('', ['-u']);
-  });
-  const runJestFile = vscode.commands.registerCommand('extension.runJestFile', async () => jestRunner.runCurrentFile());
-  const debugJest = vscode.commands.registerCommand(
-    'extension.debugJest',
+
+  const runPytestFile = vscode.commands.registerCommand('extension.runPytestFile', async () => 
+    pytestRunner.runCurrentFile()
+  );
+
+  const debugPytest = vscode.commands.registerCommand(
+    'extension.debugPytest',
     async (argument: Record<string, unknown> | string) => {
       if (typeof argument === 'string') {
-        return jestRunner.debugCurrentTest(argument);
+        return pytestRunner.debugCurrentTest(argument);
       } else {
-        return jestRunner.debugCurrentTest();
+        return pytestRunner.debugCurrentTest();
       }
     }
   );
-  const debugJestPath = vscode.commands.registerCommand('extension.debugJestPath', async (argument: vscode.Uri) =>
-    jestRunner.debugTestsOnPath(argument.fsPath)
-  );
-  const runPrev = vscode.commands.registerCommand('extension.runPrevJest', async () => jestRunner.runPreviousTest());
-  const runJestFileWithCoverage = vscode.commands.registerCommand('extension.runJestFileWithCoverage', async () =>
-    jestRunner.runCurrentFile(['--coverage'])
+
+  const debugPytestPath = vscode.commands.registerCommand('extension.debugPytestPath', async (argument: vscode.Uri) =>
+    pytestRunner.debugTestsOnPath(argument.fsPath)
   );
 
-  const runJestFileWithWatchMode = vscode.commands.registerCommand('extension.runJestFileWithWatchMode', async () =>
-    jestRunner.runCurrentFile(['--watch'])
+  const runPytestFileWithCoverage = vscode.commands.registerCommand('extension.runPytestFileWithCoverage', async () =>
+    pytestRunner.runCurrentFile(['--cov'])
   );
 
-  const watchJest = vscode.commands.registerCommand(
-    'extension.watchJest',
+  const runPytestFileWithWatchMode = vscode.commands.registerCommand('extension.runPytestFileWithWatchMode', async () =>
+    pytestRunner.runCurrentFile(['--looponfail'])
+  );
+
+  const watchPytest = vscode.commands.registerCommand(
+    'extension.watchPytest',
     async (argument: Record<string, unknown> | string) => {
-      return jestRunner.runCurrentTest(argument, ['--watch']);
+      return pytestRunner.runCurrentTest(argument, ['--looponfail']);
     }
   );
 
+  // Register CodeLens provider if not disabled
   if (!config.isCodeLensDisabled) {
     const docSelectors: vscode.DocumentFilter[] = [
       {
-        pattern: vscode.workspace.getConfiguration().get('jestrunner.codeLensSelector'),
+        pattern: config.codeLensSelector,
       },
     ];
     const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(docSelectors, codeLensProvider);
     context.subscriptions.push(codeLensProviderDisposable);
   }
-  context.subscriptions.push(runJest);
-  context.subscriptions.push(runJestCoverage);
-  context.subscriptions.push(runJestCurrentTestCoverage);
-  context.subscriptions.push(runJestAndUpdateSnapshots);
-  context.subscriptions.push(runJestFile);
-  context.subscriptions.push(runJestPath);
-  context.subscriptions.push(debugJest);
-  context.subscriptions.push(debugJestPath);
-  context.subscriptions.push(runPrev);
-  context.subscriptions.push(runJestFileWithCoverage);
-  context.subscriptions.push(runJestFileWithWatchMode);
-  context.subscriptions.push(watchJest);
+
+  // Add all command subscriptions
+  context.subscriptions.push(runPytest);
+  context.subscriptions.push(runPytestCoverage);
+  context.subscriptions.push(runPytestPath);
+  context.subscriptions.push(runPrevPytest);
+  context.subscriptions.push(runPytestFile);
+  context.subscriptions.push(debugPytest);
+  context.subscriptions.push(debugPytestPath);
+  context.subscriptions.push(runPytestFileWithCoverage);
+  context.subscriptions.push(runPytestFileWithWatchMode);
+  context.subscriptions.push(watchPytest);
 }
 
 export function deactivate(): void {

@@ -199,7 +199,7 @@
     "vscode:prepublish": "webpack --mode production",
     "build": "webpack --mode development",
     "watch": "webpack --mode development --watch",
-    "test": "jest .src/test",
+    "test": "jest src/test",
     "vsce:publish": "vsce publish patch -m '%s [skip ci]' && git push",
     "ovsx:publish": "ovsx publish",
     "publish": "npm run vsce:publish && npm run ovsx:publish",
@@ -208,6 +208,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
+    "@types/micromatch": "^4.0.6",
     "@types/node": "^20.8.6",
     "@types/vscode": "^1.83.0",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
@@ -227,7 +228,6 @@
   },
   "dependencies": {
     "fast-glob": "^3.3.3",
-    "jest-editor-support": "^31.1.2",
     "micromatch": "^4.0.8"
   }
 }

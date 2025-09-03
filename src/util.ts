@@ -33,23 +33,29 @@ export function findFullTestName(selectedLine: number, children: any[]): string 
   if (!children) {
     return;
   }
+  // Handle Python test nodes
   for (const element of children) {
-    if (element.type === 'describe' && selectedLine === element.start.line) {
-      return resolveTestNameStringInterpolation(element.name);
+    // For Python classes and functions, check if the line matches
+    if (selectedLine === element.line) {
+      return element.fullName || element.name;
     }
-    if (element.type !== 'describe' && selectedLine >= element.start.line && selectedLine <= element.end.line) {
-      return resolveTestNameStringInterpolation(element.name);
+    // For range-based matching (if we have end line info)
+    if (element.endLine && selectedLine >= element.line && selectedLine <= element.endLine) {
+      return element.fullName || element.name;
     }
   }
+  // Check nested children (for test methods in classes)
   for (const element of children) {
-    const result = findFullTestName(selectedLine, element.children);
-    if (result) {
-      return resolveTestNameStringInterpolation(element.name) + ' ' + result;
+    if (element.children) {
+      const result = findFullTestName(selectedLine, element.children);
+      if (result) {
+        return result; // Python already includes class name in fullName
+      }
     }
   }
 }
 
-const QUOTES = {
+const QUOTES: Record<string, boolean> = {
   '"': true,
   "'": true,
   '`': true,
@@ -86,19 +92,19 @@ export function pushMany<T>(arr: T[], items: T[]): number {
   return Array.prototype.push.apply(arr, items);
 }
 
-export type CodeLensOption = 'run' | 'debug' | 'watch' | 'coverage' | 'current-test-coverage';
+export type CodeLensOption = 'run' | 'debug' | 'watch' | 'coverage';
 
 function isCodeLensOption(option: string): option is CodeLensOption {
-  return ['run', 'debug', 'watch', 'coverage', 'current-test-coverage'].includes(option);
+  return ['run', 'debug', 'watch', 'coverage'].includes(option);
 }
 
 export function validateCodeLensOptions(maybeCodeLensOptions: string[]): CodeLensOption[] {
   return [...new Set(maybeCodeLensOptions)].filter((value) => isCodeLensOption(value)) as CodeLensOption[];
 }
 
-export function isNodeExecuteAbleFile(filepath: string): boolean {
+export function isPythonExecutable(pythonPath: string): boolean {
   try {
-    execSync(`node ${filepath} --help`);
+    execSync(`${pythonPath} --version`, { timeout: 5000 });
     return true;
   } catch (err) {
     return false;
@@ -131,9 +137,9 @@ export function resolveConfigPathOrMapping(
       return normalizePath(value);
     }
   }
-  if (Object.keys(configPathOrMapping).length > 0) {
+  if (configPathOrMapping && Object.keys(configPathOrMapping).length > 0) {
     vscode.window.showWarningMessage(
-      `None of the glob patterns in the configPath mapping matched the target file. Make sure you're using correct glob pattern syntax. Jest-runner uses the same library (micromatch) for evaluating glob patterns as Jest uses to evaluate it's 'testMatch' configuration.`,
+      `None of the glob patterns in the configPath mapping matched the target file. Make sure you're using correct glob pattern syntax. Pytest-runner uses the same library (micromatch) for evaluating glob patterns.`,
     );
   }
 
@@ -174,4 +180,56 @@ export function searchPathToParent<T>(
   } while (currentFolderPath !== endPath && currentFolderPath !== lastPath);
 
   return false;
+}
+
+/**
+ * Check if a file appears to be a Python test file
+ */
+export function isPythonTestFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  return fileName.endsWith('.py') && (
+    fileName.startsWith('test_') ||
+    fileName.endsWith('_test.py') ||
+    fileName.includes('test')
+  );
+}
+
+/**
+ * Format pytest test name for command line execution
+ */
+export function formatPytestTestName(testName: string, filePath?: string): string {
+  if (filePath && testName.includes('::')) {
+    // Already formatted with class::method syntax
+    return `${filePath}::${testName}`;
+  } else if (filePath) {
+    // Simple test function
+    return `${filePath}::${testName}`;
+  }
+  return testName;
+}
+
+/**
+ * Check if Poetry is available in the system
+ */
+export function isPoetryAvailable(poetryPath: string = 'poetry'): boolean {
+  try {
+    execSync(`${poetryPath} --version`, { timeout: 5000 });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Extract Python test class and method from full name
+ */
+export function parseTestFullName(fullName: string): { className?: string; methodName: string } {
+  if (fullName.includes('::')) {
+    const parts = fullName.split('::');
+    return {
+      className: parts[0],
+      methodName: parts[1]
+    };
+  }
+  return { methodName: fullName };
 }

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 
-import { JestRunnerConfig } from './jestRunnerConfig';
+import { PytestRunnerConfig } from './pytestRunnerConfig';
 import { parse } from './parser';
 import {
   escapeRegExp,
@@ -14,7 +15,9 @@ import {
   pushMany,
   quote,
   unquote,
-  updateTestNameIfUsingProperties,
+  isPythonTestFile,
+  formatPytestTestName,
+  parseTestFullName,
 } from './util';
 
 interface DebugCommand {
@@ -22,10 +25,10 @@ interface DebugCommand {
   config: vscode.DebugConfiguration;
 }
 
-export class JestRunner {
-  private previousCommand: string | DebugCommand;
+export class PytestRunner {
+  private previousCommand: string | DebugCommand | undefined;
 
-  private terminal: vscode.Terminal;
+  private terminal: vscode.Terminal | undefined;
 
   // support for running in a native external terminal
   // force runTerminalCommand to push to a queue and run in a native external
@@ -33,7 +36,7 @@ export class JestRunner {
   private openNativeTerminal: boolean;
   private commands: string[] = [];
 
-  constructor(private readonly config: JestRunnerConfig) {
+  constructor(private readonly config: PytestRunnerConfig) {
     this.setup();
     this.openNativeTerminal = config.isRunInExternalNativeTerminal;
   }
@@ -43,7 +46,7 @@ export class JestRunner {
   //
 
   public async runTestsOnPath(path: string): Promise<void> {
-    const command = this.buildJestCommand(path);
+    const command = this.buildPytestCommand(path);
 
     this.previousCommand = command;
 
@@ -68,24 +71,30 @@ export class JestRunner {
 
     const filePath = editor.document.fileName;
 
-    const finalOptions = options;
+    // Check if it's a Python test file
+    if (!isPythonTestFile(filePath)) {
+      vscode.window.showWarningMessage('Current file does not appear to be a Python test file.');
+      return;
+    }
+
+    const finalOptions = options || [];
     if (collectCoverageFromCurrentFile) {
       const targetFileDir = getDirName(filePath);
-      const targetFileName = getFileName(filePath).replace(/\.(test|spec)\./, '.');
+      const targetFileName = getFileName(filePath)
+        .replace(/test_/, '')
+        .replace(/_test\.py$/, '.py');
 
-      // if a file does not exist with the same name as the test file but without the test/spec part
+      // if a file does not exist with the same name as the test file but without the test part
       // use test file's directory for coverage target
       const coverageTarget = fs.existsSync(`${targetFileDir}/${targetFileName}`)
-        ? `**/${targetFileName}`
-        : `**/${getFileName(targetFileDir)}/**`;
+        ? targetFileName
+        : targetFileDir;
 
-      finalOptions.push('--collectCoverageFrom');
-      finalOptions.push(quote(coverageTarget));
+      finalOptions.push('--cov', coverageTarget);
     }
 
     const testName = currentTestName || this.findCurrentTestName(editor);
-    const resolvedTestName = updateTestNameIfUsingProperties(testName);
-    const command = this.buildJestCommand(filePath, resolvedTestName, finalOptions);
+    const command = this.buildPytestCommand(filePath, testName, finalOptions);
 
     this.previousCommand = command;
 
@@ -104,7 +113,14 @@ export class JestRunner {
     await editor.document.save();
 
     const filePath = editor.document.fileName;
-    const command = this.buildJestCommand(filePath, undefined, options);
+
+    // Check if it's a Python test file
+    if (!isPythonTestFile(filePath)) {
+      vscode.window.showWarningMessage('Current file does not appear to be a Python test file.');
+      return;
+    }
+
+    const command = this.buildPytestCommand(filePath, undefined, options);
 
     this.previousCommand = command;
 
@@ -125,7 +141,7 @@ export class JestRunner {
     if (typeof this.previousCommand === 'string') {
       await this.goToCwd();
       await this.runTerminalCommand(this.previousCommand);
-    } else {
+    } else if (this.previousCommand) {
       await this.executeDebugCommand(this.previousCommand);
     }
 
@@ -153,9 +169,15 @@ export class JestRunner {
     await editor.document.save();
 
     const filePath = editor.document.fileName;
+
+    // Check if it's a Python test file
+    if (!isPythonTestFile(filePath)) {
+      vscode.window.showWarningMessage('Current file does not appear to be a Python test file.');
+      return;
+    }
+
     const testName = currentTestName || this.findCurrentTestName(editor);
-    const resolvedTestName = updateTestNameIfUsingProperties(testName);
-    const debugConfig = this.getDebugConfig(filePath, resolvedTestName);
+    const debugConfig = this.getDebugConfig(filePath, testName);
 
     await this.goToCwd();
     await this.executeDebugCommand({
@@ -186,28 +208,45 @@ export class JestRunner {
 
   private getDebugConfig(filePath: string, currentTestName?: string): vscode.DebugConfiguration {
     const config: vscode.DebugConfiguration = {
-      console: 'integratedTerminal',
-      internalConsoleOptions: 'neverOpen',
-      name: 'Debug Jest Tests',
-      program: this.config.jestBinPath,
+      name: 'Debug Pytest Tests',
+      type: 'python',
       request: 'launch',
-      type: 'node',
+      module: 'pytest',
+      console: 'integratedTerminal',
       cwd: this.config.cwd,
       ...this.config.debugOptions,
     };
 
     config.args = config.args ? config.args.slice() : [];
 
-    if (this.config.isYarnPnpSupportEnabled) {
-      config.args = ['jest'];
-      config.program = `.yarn/releases/${this.config.getYarnPnpCommand}`;
+    const standardArgs = this.buildPytestArgs(filePath, currentTestName, false);
+    pushMany(config.args, standardArgs);
+    
+    // Add debugging specific args
+    config.args.push('-s'); // Don't capture stdout (for better debugging)
+    config.args.push('--tb=short'); // Short traceback format
+
+    // Set Python path if virtual environment is detected
+    const pythonPath = this.getPythonPath();
+    if (pythonPath) {
+      config.python = pythonPath;
     }
 
-    const standardArgs = this.buildJestArgs(filePath, currentTestName, false);
-    pushMany(config.args, standardArgs);
-    config.args.push('--runInBand');
-
     return config;
+  }
+
+  private getPythonPath(): string | undefined {
+    const virtualEnvPath = this.config.virtualEnvPath;
+    if (virtualEnvPath) {
+      const pythonPath = process.platform === 'win32'
+        ? path.join(virtualEnvPath, 'Scripts', 'python.exe')
+        : path.join(virtualEnvPath, 'bin', 'python');
+      
+      if (fs.existsSync(pythonPath)) {
+        return pythonPath;
+      }
+    }
+    return undefined;
   }
 
   private findCurrentTestName(editor: vscode.TextEditor): string | undefined {
@@ -221,39 +260,51 @@ export class JestRunner {
     const filePath = editor.document.fileName;
     const testFile = parse(filePath);
 
-    const fullTestName = findFullTestName(selectedLine, testFile.root.children);
-    return fullTestName ? escapeRegExp(fullTestName) : undefined;
+    const fullTestName = findFullTestName(selectedLine, testFile);
+    return fullTestName;
   }
 
-  private buildJestCommand(filePath: string, testName?: string, options?: string[]): string {
-    const args = this.buildJestArgs(filePath, testName, true, options);
-    return `${this.config.jestCommand} ${args.join(' ')}`;
+  private buildPytestCommand(filePath: string, testName?: string, options?: string[]): string {
+    const args = this.buildPytestArgs(filePath, testName, true, options);
+    return `${this.config.pytestCommand} ${args.join(' ')}`;
   }
 
-  private buildJestArgs(filePath: string, testName: string, withQuotes: boolean, options: string[] = []): string[] {
+  private buildPytestArgs(filePath: string, testName?: string, withQuotes: boolean = true, options: string[] = []): string[] {
     const args: string[] = [];
-    const quoter = withQuotes ? quote : (str) => str;
+    const quoter = withQuotes ? quote : (str: string) => str;
 
-    args.push(quoter(escapeRegExpForPath(normalizePath(filePath))));
+    // Add the file path
+    args.push(quoter(normalizePath(filePath)));
 
-    const jestConfigPath = this.config.getJestConfigPath(filePath);
-    if (jestConfigPath) {
-      args.push('-c');
-      args.push(quoter(normalizePath(jestConfigPath)));
-    }
-
+    // Add test name if specified
     if (testName) {
-      args.push('-t');
-      args.push(quoter(escapeSingleQuotes(testName)));
+      // Handle pytest test selection with -k option
+      if (testName.includes('::')) {
+        // Class::method format
+        args.push('-k', quoter(testName.replace('::', ' and ')));
+      } else {
+        // Simple test function name
+        args.push('-k', quoter(testName));
+      }
     }
 
-    const setOptions = new Set(options);
-
-    if (this.config.runOptions) {
-      this.config.runOptions.forEach((option) => setOptions.add(option));
+    // Add pytest configuration file if available
+    const pytestConfigPath = this.config.getPytestConfigPath(filePath);
+    if (pytestConfigPath) {
+      args.push('-c', quoter(normalizePath(pytestConfigPath)));
     }
 
-    args.push(...setOptions);
+    // Add pytest arguments from configuration
+    const configArgs = this.config.pytestArgs;
+    if (configArgs && configArgs.length > 0) {
+      args.push(...configArgs);
+    }
+
+    // Add additional options
+    if (options && options.length > 0) {
+      const setOptions = new Set(options);
+      args.push(...setOptions);
+    }
 
     return args;
   }
@@ -266,7 +317,7 @@ export class JestRunner {
   }
 
   private buildNativeTerminalCommand(toRun: string): string {
-    const command = `ttab -t 'jest-runner' "${toRun}"`;
+    const command = `ttab -t 'pytest-runner' "${toRun}"`;
     return command;
   }
 
@@ -281,7 +332,7 @@ export class JestRunner {
     this.commands = [];
 
     if (!this.terminal) {
-      this.terminal = vscode.window.createTerminal('jest');
+      this.terminal = vscode.window.createTerminal('pytest');
     }
 
     this.terminal.show(this.config.preserveEditorFocus);
@@ -296,7 +347,7 @@ export class JestRunner {
     }
 
     if (!this.terminal) {
-      this.terminal = vscode.window.createTerminal('jest');
+      this.terminal = vscode.window.createTerminal('pytest');
     }
     this.terminal.show(this.config.preserveEditorFocus);
     await vscode.commands.executeCommand('workbench.action.terminal.clear');
@@ -306,7 +357,7 @@ export class JestRunner {
   private setup() {
     vscode.window.onDidCloseTerminal((closedTerminal: vscode.Terminal) => {
       if (this.terminal === closedTerminal) {
-        this.terminal = null;
+        this.terminal = undefined;
       }
     });
   }

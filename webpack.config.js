@@ -28,10 +28,18 @@ const config = {
     rules: [
       {
         test: /\.ts$/,
-        exclude: /(node_modules|test)/,
+        exclude: /node_modules/,
         use: [
           {
             loader: 'ts-loader',
+            options: {
+              transpileOnly: true,
+              compilerOptions: {
+                module: 'commonjs',
+                target: 'es6',
+                sourceMap: true,
+              },
+            },
           },
         ],
       },
