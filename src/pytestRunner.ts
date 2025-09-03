@@ -5,9 +5,6 @@ import * as path from 'path';
 import { PytestRunnerConfig } from './pytestRunnerConfig';
 import { parse } from './parser';
 import {
-  escapeRegExp,
-  escapeRegExpForPath,
-  escapeSingleQuotes,
   findFullTestName,
   getFileName,
   getDirName,
@@ -16,14 +13,13 @@ import {
   quote,
   unquote,
   isPythonTestFile,
-  formatPytestTestName,
-  parseTestFullName,
 } from './util';
 
 interface DebugCommand {
   documentUri: vscode.Uri;
   config: vscode.DebugConfiguration;
 }
+
 
 export class PytestRunner {
   private previousCommand: string | DebugCommand | undefined;
@@ -64,6 +60,7 @@ export class PytestRunner {
     const currentTestName = typeof argument === 'string' ? argument : undefined;
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
+      vscode.window.showErrorMessage('No active editor found. Please open a Python test file.');
       return;
     }
 
@@ -86,9 +83,7 @@ export class PytestRunner {
 
       // if a file does not exist with the same name as the test file but without the test part
       // use test file's directory for coverage target
-      const coverageTarget = fs.existsSync(`${targetFileDir}/${targetFileName}`)
-        ? targetFileName
-        : targetFileDir;
+      const coverageTarget = fs.existsSync(`${targetFileDir}/${targetFileName}`) ? targetFileName : targetFileDir;
 
       finalOptions.push('--cov', coverageTarget);
     }
@@ -107,6 +102,7 @@ export class PytestRunner {
   public async runCurrentFile(options?: string[]): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
+      vscode.window.showErrorMessage('No active editor found. Please open a Python test file.');
       return;
     }
 
@@ -163,6 +159,7 @@ export class PytestRunner {
   public async debugCurrentTest(currentTestName?: string): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
+      vscode.window.showErrorMessage('No active editor found. Please open a Python test file.');
       return;
     }
 
@@ -187,6 +184,7 @@ export class PytestRunner {
 
     await this.runExternalNativeTerminalCommand(this.commands);
   }
+
 
   //
   // private methods
@@ -221,7 +219,7 @@ export class PytestRunner {
 
     const standardArgs = this.buildPytestArgs(filePath, currentTestName, false);
     pushMany(config.args, standardArgs);
-    
+
     // Add debugging specific args
     config.args.push('-s'); // Don't capture stdout (for better debugging)
     config.args.push('--tb=short'); // Short traceback format
@@ -238,10 +236,11 @@ export class PytestRunner {
   private getPythonPath(): string | undefined {
     const virtualEnvPath = this.config.virtualEnvPath;
     if (virtualEnvPath) {
-      const pythonPath = process.platform === 'win32'
-        ? path.join(virtualEnvPath, 'Scripts', 'python.exe')
-        : path.join(virtualEnvPath, 'bin', 'python');
-      
+      const pythonPath =
+        process.platform === 'win32'
+          ? path.join(virtualEnvPath, 'Scripts', 'python.exe')
+          : path.join(virtualEnvPath, 'bin', 'python');
+
       if (fs.existsSync(pythonPath)) {
         return pythonPath;
       }
@@ -269,7 +268,12 @@ export class PytestRunner {
     return `${this.config.pytestCommand} ${args.join(' ')}`;
   }
 
-  private buildPytestArgs(filePath: string, testName?: string, withQuotes: boolean = true, options: string[] = []): string[] {
+  private buildPytestArgs(
+    filePath: string,
+    testName?: string,
+    withQuotes: boolean = true,
+    options: string[] = [],
+  ): string[] {
     const args: string[] = [];
     const quoter = withQuotes ? quote : (str: string) => str;
 

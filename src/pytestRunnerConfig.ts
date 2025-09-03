@@ -4,7 +4,6 @@ import * as vscode from 'vscode';
 import { execSync } from 'child_process';
 import {
   normalizePath,
-  quote,
   validateCodeLensOptions,
   CodeLensOption,
   resolveConfigPathOrMapping,
@@ -50,7 +49,7 @@ export class PytestRunnerConfig {
     if (customPath) {
       return customPath;
     }
-    
+
     // Try to get Poetry virtual environment path
     if (this.usePoetry && this.detectPoetryProject()) {
       const poetryEnvPath = this.getPoetryVirtualEnvPath();
@@ -58,7 +57,7 @@ export class PytestRunnerConfig {
         return poetryEnvPath;
       }
     }
-    
+
     return '';
   }
 
@@ -78,13 +77,13 @@ export class PytestRunnerConfig {
         return poetryRoot;
       }
     }
-    
+
     // For non-Poetry projects, use virtual environment path if specified
     const venvPath = this.virtualEnvPath;
     if (venvPath) {
       return venvPath;
     }
-    
+
     return this.currentWorkspaceFolderPath;
   }
 
@@ -104,7 +103,7 @@ export class PytestRunnerConfig {
     if (!projectRoot) {
       return false;
     }
-    
+
     const pyprojectPath = path.join(projectRoot, 'pyproject.toml');
     if (!fs.existsSync(pyprojectPath)) {
       return false;
@@ -123,10 +122,10 @@ export class PytestRunnerConfig {
    */
   public getPoetryProjectRoot(): string | null {
     // Start from the active file directory, or workspace root if no active file
-    const startPath = vscode.window.activeTextEditor?.document?.uri?.fsPath 
+    const startPath = vscode.window.activeTextEditor?.document?.uri?.fsPath
       ? path.dirname(vscode.window.activeTextEditor.document.uri.fsPath)
       : this.currentWorkspaceFolderPath;
-    
+
     // Helper function to check if a directory contains a Poetry project
     const checkPoetryProject = (dirPath: string): string | null => {
       const pyprojectPath = path.join(dirPath, 'pyproject.toml');
@@ -148,14 +147,14 @@ export class PytestRunnerConfig {
     if (workspaceCheck) {
       return normalizePath(workspaceCheck);
     }
-    
+
     // Then search from current file up to workspace root
     const foundPath = searchPathToParent<string>(
       startPath,
       this.currentWorkspaceFolderPath,
       (currentFolderPath: string) => checkPoetryProject(currentFolderPath),
     );
-    
+
     return foundPath ? normalizePath(foundPath) : null;
   }
 
@@ -167,12 +166,11 @@ export class PytestRunnerConfig {
     if (!projectRoot) {
       return null;
     }
-
     try {
-      const result = execSync(`${this.poetryPath} env info --path`, { 
+      const result = execSync(`${this.poetryPath} env info --path`, {
         cwd: projectRoot,
         encoding: 'utf8',
-        timeout: 5000
+        timeout: 5000,
       });
       return result.toString().trim();
     } catch {
@@ -197,15 +195,12 @@ export class PytestRunnerConfig {
 
   public findPytestConfigPath(targetPath?: string): string {
     const foundPath = searchPathToParent<string>(
-      targetPath || path.dirname(vscode.window.activeTextEditor?.document?.uri?.fsPath || this.currentWorkspaceFolderPath),
+      targetPath ||
+        path.dirname(vscode.window.activeTextEditor?.document?.uri?.fsPath || this.currentWorkspaceFolderPath),
       this.currentWorkspaceFolderPath,
       (currentFolderPath: string) => {
         // Check for pytest configuration files in order of precedence
-        for (const configFilename of [
-          'pytest.ini',
-          'pyproject.toml',
-          'setup.cfg',
-        ]) {
+        for (const configFilename of ['pytest.ini', 'pyproject.toml', 'setup.cfg']) {
           const currentFolderConfigPath = path.join(currentFolderPath, configFilename);
 
           if (fs.existsSync(currentFolderConfigPath)) {
@@ -244,9 +239,10 @@ export class PytestRunnerConfig {
   private getPythonPath(): string {
     const venvPath = this.virtualEnvPath;
     if (venvPath) {
-      const pythonPath = process.platform === 'win32' 
-        ? path.join(venvPath, 'Scripts', 'python.exe')
-        : path.join(venvPath, 'bin', 'python');
+      const pythonPath =
+        process.platform === 'win32'
+          ? path.join(venvPath, 'Scripts', 'python.exe')
+          : path.join(venvPath, 'bin', 'python');
       if (fs.existsSync(pythonPath)) {
         return pythonPath;
       }
@@ -255,7 +251,9 @@ export class PytestRunnerConfig {
   }
 
   public get isCodeLensDisabled(): boolean {
-    const isCodeLensDisabled: boolean | undefined = vscode.workspace.getConfiguration().get('pytestrunner.disableCodeLens');
+    const isCodeLensDisabled: boolean | undefined = vscode.workspace
+      .getConfiguration()
+      .get('pytestrunner.disableCodeLens');
     return isCodeLensDisabled ?? false;
   }
 

@@ -29,6 +29,7 @@ export function escapeRegExpForPath(s: string): string {
   return s.replace(/[*+?^${}<>()|[\]]/g, '\\$&'); // $& means the whole matched string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function findFullTestName(selectedLine: number, children: any[]): string | undefined {
   if (!children) {
     return;
@@ -60,12 +61,6 @@ const QUOTES: Record<string, boolean> = {
   "'": true,
   '`': true,
 };
-
-function resolveTestNameStringInterpolation(s: string): string {
-  const variableRegex = /(\${?[A-Za-z0-9_]+}?|%[psdifjo#%])/gi;
-  const matchAny = '(.*?)';
-  return s.replace(variableRegex, matchAny);
-}
 
 export function escapeSingleQuotes(s: string): string {
   return isWindows() ? s : s.replace(/'/g, "'\\''");
@@ -187,10 +182,9 @@ export function searchPathToParent<T>(
  */
 export function isPythonTestFile(filePath: string): boolean {
   const fileName = path.basename(filePath);
-  return fileName.endsWith('.py') && (
-    fileName.startsWith('test_') ||
-    fileName.endsWith('_test.py') ||
-    fileName.includes('test')
+  return (
+    fileName.endsWith('.py') &&
+    (fileName.startsWith('test_') || fileName.endsWith('_test.py') || fileName.includes('test'))
   );
 }
 
@@ -228,7 +222,7 @@ export function parseTestFullName(fullName: string): { className?: string; metho
     const parts = fullName.split('::');
     return {
       className: parts[0],
-      methodName: parts[1]
+      methodName: parts[1],
     };
   }
   return { methodName: fullName };

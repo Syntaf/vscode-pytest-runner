@@ -125,13 +125,6 @@ This document outlines the comprehensive plan for refactoring the VSCode Jest Ru
   - Handle `setup.cfg` pytest configuration
   - Support pytest plugins and markers
 
-#### 3.3 Python Test Discovery
-- **New functionality**:
-  - Use `pytest --collect-only --quiet` for reliable test discovery
-  - Parse pytest collection output to build test tree
-  - Handle parametrized tests and fixtures
-  - Support test classes and inheritance
-
 ### Phase 4: Debug Integration
 
 #### 4.1 Python Debug Configuration
