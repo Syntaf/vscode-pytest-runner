@@ -1,13 +1,13 @@
 {
-  "name": "vscode-jest-runner",
-  "displayName": "Jest Runner",
-  "description": "Simple way to run or debug a single (or multiple) tests from context-menu",
-  "version": "0.4.82",
+  "name": "vscode-pytest-runner",
+  "displayName": "Pytest Runner",
+  "description": "Simple way to run or debug Python tests using pytest from context-menu",
+  "version": "0.1.0",
   "publisher": "firsttris",
   "author": "Tristan Teufel",
   "repository": {
     "type": "git",
-    "url": "https://github.com/firsttris/vscode-jest-runner.git"
+    "url": "https://github.com/firsttris/vscode-pytest-runner.git"
   },
   "license": "MIT",
   "icon": "public/icon.png",
@@ -15,143 +15,114 @@
     "vscode": "^1.83.0"
   },
   "categories": [
-    "Other"
+    "Testing"
+  ],
+  "keywords": [
+    "python",
+    "pytest",
+    "testing",
+    "test runner",
+    "poetry",
+    "debug"
   ],
   "activationEvents": [
-    "*"
+    "onLanguage:python"
+  ],
+  "extensionDependencies": [
+    "ms-python.python"
   ],
   "main": "./dist/extension",
   "contributes": {
     "configuration": [
       {
-        "title": "Jest-Runner Config",
+        "title": "Pytest-Runner Config",
         "properties": {
-          "jestrunner.configPath": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Jest config path (relative to `${workspaceFolder}` e.g. jest-config.json)"
-              },
-              {
-                "type": "object",
-                "scope": "resource",
-                "description": "A mapping of file globs to jest config paths. Useful when you need to run different jest configurations based on the file naming convention.",
-                "patternProperties": {
-                  ".*": {
-                    "type": "string",
-                    "description": "The target jest config path for the matched file glob."
-                  }
-                },
-                "additionalProperties": false
-              }
-            ],
-            "default": "",
-            "scope": "window"
-          },
-          "jestrunner.jestPath": {
+          "pytestrunner.pytestPath": {
             "type": "string",
-            "default": "",
-            "description": "Absolute path to jest bin file (e.g. /usr/lib/node_modules/jest/bin/jest.js)",
+            "default": "pytest",
+            "description": "Path to pytest executable",
             "scope": "window"
           },
-          "jestrunner.projectPath": {
-            "type": "string",
-            "default": "",
-            "description": "Absolute path to project directory (e.g. /home/me/project/sub-folder)",
-            "scope": "window"
-          },
-          "jestrunner.debugOptions": {
-            "type": "object",
-            "default": {},
-            "description": "Add or overwrite vscode debug configurations (only in debug mode) (e.g. { \"args\": [\"--no-cache\"] })",
-            "scope": "window"
-          },
-          "jestrunner.runOptions": {
+          "pytestrunner.pytestArgs": {
             "type": "array",
-            "default": [],
+            "default": ["-v"],
             "items": {
               "type": "string",
-              "description": "CLI Option e.g. --coverage"
+              "description": "Pytest argument"
             },
-            "description": "Add CLI Options to the Jest Command e.g. https://jestjs.io/docs/en/cli",
+            "description": "Default pytest arguments",
             "scope": "window"
           },
-          "jestrunner.jestCommand": {
+          "pytestrunner.configPath": {
             "type": "string",
             "default": "",
-            "description": "Define an alternative Jest command (e.g. for Create React App and similar abstractions)",
+            "description": "Path to pytest config file (pytest.ini, pyproject.toml, setup.cfg)",
             "scope": "window"
           },
-          "jestrunner.disableCodeLens": {
+          "pytestrunner.usePoetry": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use Poetry for dependency management and virtual environment",
+            "scope": "window"
+          },
+          "pytestrunner.poetryPath": {
+            "type": "string",
+            "default": "poetry",
+            "description": "Path to Poetry executable",
+            "scope": "window"
+          },
+          "pytestrunner.virtualEnvPath": {
+            "type": "string",
+            "default": "",
+            "description": "Custom virtual environment path (overrides Poetry detection)",
+            "scope": "window"
+          },
+          "pytestrunner.disableCodeLens": {
             "type": "boolean",
             "default": false,
             "description": "Disable CodeLens feature",
             "scope": "window"
           },
-          "jestrunner.runInExternalNativeTerminal": {
-            "type": "boolean",
-            "default": false,
-            "description": "Run jest runner in external native terminal. Disabled on debug mode",
-            "scope": "window"
+          "pytestrunner.codeLensSelector": {
+            "type": "string",
+            "default": "**/{test_*.py,*_test.py}",
+            "description": "CodeLens will be shown on Python test files matching this pattern"
           },
-          "jestrunner.codeLens": {
+          "pytestrunner.codeLens": {
             "type": "array",
             "default": [
               "run",
               "debug"
             ],
-            "description": "Enable desired codeLens, possible value : 'run', 'debug', 'watch', 'coverage', 'current-test-coverage'. Defaults to ['run', 'debug'] ",
+            "description": "Enable desired codeLens, possible values: 'run', 'debug', 'watch', 'coverage'. Defaults to ['run', 'debug']",
             "items": {
               "type": "string",
-              "description": "Either 'run', 'debug', 'watch', 'coverage', 'current-test-coverage'"
+              "description": "Either 'run', 'debug', 'watch', 'coverage'"
             },
             "scope": "window"
           },
-          "jestrunner.codeLensSelector": {
-            "type": "string",
-            "default": "**/*.{test,spec}.{js,jsx,ts,tsx}",
-            "description": "CodeLens will be shown on files matching this pattern"
-          },
-          "jestrunner.enableYarnPnpSupport": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable if you are using Yarn 2 with Plug'n'Play",
-            "scope": "window"
-          },
-          "jestrunner.checkRelativePathForJest": {
+          "pytestrunner.changeDirectoryToWorkspaceRoot": {
             "type": "boolean",
             "default": true,
-            "description": "When looking for the nearest resolution for Jest, only check for package.json files, rather than the `node_modules` folder.",
+            "description": "Changes directory before execution. The fallback order is:\n1. `pytestrunner.virtualEnvPath`\n2. Poetry project root\n3. `${workspaceFolder}`",
             "scope": "window"
           },
-          "jestrunner.changeDirectoryToWorkspaceRoot": {
-            "type": "boolean",
-            "default": true,
-            "description": "Changes directory before execution. The fallback order is:\n1. `jestrunner.projectPath`\n2. the nearest `package.json`\n3. `${workspaceFolder}`",
-            "scope": "window"
-          },
-          "jestrunner.preserveEditorFocus": {
+          "pytestrunner.preserveEditorFocus": {
             "type": "boolean",
             "default": false,
             "description": "Preserve focus on editor when running tests",
             "scope": "window"
           },
-          "jestrunner.yarnPnpCommand": {
-            "type": "string",
-            "default": "yarn-*.*js",
-            "description": "Command for debugging with Plug'n'Play",
-            "scope": "window"
-          },
-          "jestrunner.include": {
+          "pytestrunner.include": {
             "type": "array",
             "default": [],
-            "description": "File globs to include",
+            "description": "Python test file globs to include",
             "scope": "window"
           },
-          "jestrunner.exclude": {
+          "pytestrunner.exclude": {
             "type": "array",
             "default": [],
-            "description": "File globs to exclude",
+            "description": "Python test file globs to exclude",
             "scope": "window"
           }
         }
@@ -159,71 +130,67 @@
     ],
     "commands": [
       {
-        "command": "extension.runJest",
-        "title": "Run Jest"
+        "command": "extension.runPytest",
+        "title": "Run Pytest"
       },
       {
-        "command": "extension.runJestPath",
-        "title": "Run Jest on Path"
+        "command": "extension.runPytestPath",
+        "title": "Run Pytest on Path"
       },
       {
-        "command": "extension.runJestCoverage",
-        "title": "Run Jest and generate Coverage"
+        "command": "extension.runPytestCoverage",
+        "title": "Run Pytest with Coverage"
       },
       {
-        "command": "extension.runJestAndUpdateSnapshots",
-        "title": "Run Jest and update Snapshots"
+        "command": "extension.runPrevPytest",
+        "title": "Run Pytest - Run Previous Test"
       },
       {
-        "command": "extension.runPrevJest",
-        "title": "Run Jest - Run Previous Test"
+        "command": "extension.runPytestFile",
+        "title": "Run Pytest on File"
       },
       {
-        "command": "extension.runJestFile",
-        "title": "Run Jest on File"
+        "command": "extension.debugPytest",
+        "title": "Debug Pytest"
       },
       {
-        "command": "extension.debugJest",
-        "title": "Debug Jest"
+        "command": "extension.debugPytestPath",
+        "title": "Debug Pytest on Path"
       },
       {
-        "command": "extension.debugJestPath",
-        "title": "Debug Jest on Path"
+        "command": "extension.runPytestFileWithCoverage",
+        "title": "Run Pytest File with Coverage"
       },
       {
-        "command": "extension.runJestFileWithCoverage",
-        "title": "Run Jest File and generate Coverage"
+        "command": "extension.runPytestFileWithWatchMode",
+        "title": "Run Pytest File in Watch Mode"
       },
       {
-        "command": "extension.runJestFileWithWatchMode",
-        "title": "Run Jest File in Watch Mode"
-      },
-      {
-        "command": "extension.watchJest",
-        "title": "Run Jest --watch"
+        "command": "extension.watchPytest",
+        "title": "Run Pytest --watch"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "extension.runJest",
-          "group": "02_jest"
+          "command": "extension.runPytest",
+          "group": "02_pytest"
         },
         {
-          "command": "extension.debugJest",
-          "group": "02_jest"
+          "command": "extension.debugPytest",
+          "group": "02_pytest"
         }
       ],
       "explorer/context": [
         {
-          "command": "extension.runJestPath",
-          "when": "explorerResourceIsFolder || resourceFilename =~ /.*\\.(spec|test)\\.(js|jsx|ts|tsx)$/",
-          "group": "02_jest@1"
+          "command": "extension.runPytestPath",
+          "when": "explorerResourceIsFolder || resourceFilename =~ /.*(test_.*\\.py|.*_test\\.py)$/",
+          "group": "02_pytest@1"
         },
         {
-          "command": "extension.debugJestPath",
-          "when": "explorerResourceIsFolder || resourceFilename =~ /.*\\.(spec|test)\\.(js|jsx|ts|tsx)$/",
-          "group": "02_jest@2"
+          "command": "extension.debugPytestPath",
+          "when": "explorerResourceIsFolder || resourceFilename =~ /.*(test_.*\\.py|.*_test\\.py)$/",
+          "group": "02_pytest@2"
         }
       ]
     }
