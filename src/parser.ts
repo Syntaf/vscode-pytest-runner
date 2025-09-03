@@ -27,13 +27,12 @@ interface PythonParserResult {
   error?: string;
 }
 
-
 /**
  * Python test parser that uses AST parsing via subprocess
  */
 export class PythonTestParser {
   private pythonParserPath: string;
-  
+
   constructor() {
     this.pythonParserPath = path.join(__dirname, 'python-parser', 'ast_parser.py');
   }
@@ -59,7 +58,7 @@ export class PythonTestParser {
       if (result.length > 0) {
         return result;
       }
-      
+
       // Fallback to regex parsing if AST parsing fails
       return this.parseWithRegex(filePath);
     } catch (error) {
@@ -73,10 +72,9 @@ export class PythonTestParser {
    */
   private isTestFile(filePath: string): boolean {
     const fileName = path.basename(filePath);
-    return fileName.endsWith('.py') && (
-      fileName.startsWith('test_') ||
-      fileName.endsWith('_test.py') ||
-      fileName.includes('test')
+    return (
+      fileName.endsWith('.py') &&
+      (fileName.startsWith('test_') || fileName.endsWith('_test.py') || fileName.includes('test'))
     );
   }
 
@@ -93,15 +91,15 @@ export class PythonTestParser {
       const output = execSync(command, {
         encoding: 'utf8',
         timeout: 10000, // 10 second timeout
-        maxBuffer: 1024 * 1024 // 1MB buffer
+        maxBuffer: 1024 * 1024, // 1MB buffer
       });
 
       const result: PythonParserResult = JSON.parse(output);
-      
+
       if (result.success && Array.isArray(result.tests)) {
         return this.processTestNodes(result.tests);
       }
-      
+
       return [];
     } catch (error) {
       // Silently fail and let fallback handle it
@@ -112,12 +110,13 @@ export class PythonTestParser {
   /**
    * Process raw test nodes from Python parser and add children relationships
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private processTestNodes(tests: any[]): PythonTestNode[] {
     const processedTests: PythonTestNode[] = [];
     const testsByClass = new Map<string, PythonTestNode[]>();
 
     // First pass: convert and group by class
-    tests.forEach(test => {
+    tests.forEach((test) => {
       const node: PythonTestNode = {
         name: test.name,
         line: test.line || 1,
@@ -126,7 +125,7 @@ export class PythonTestParser {
         fullName: test.full_name || test.name,
         parametrized: test.parametrized || false,
         async: test.async || false,
-        fixtures: test.fixtures || []
+        fixtures: test.fixtures || [],
       };
 
       if (node.class) {
@@ -141,7 +140,7 @@ export class PythonTestParser {
 
     // Second pass: create class nodes with children
     testsByClass.forEach((methods, className) => {
-      const classNode = tests.find(test => test.name === className && test.type === 'class');
+      const classNode = tests.find((test) => test.name === className && test.type === 'class');
       if (classNode) {
         const node: PythonTestNode = {
           name: className,
@@ -151,7 +150,7 @@ export class PythonTestParser {
           fullName: className,
           parametrized: false,
           async: false,
-          children: methods
+          children: methods,
         };
         processedTests.push(node);
       } else {
@@ -175,7 +174,7 @@ export class PythonTestParser {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const trimmedLine = line.trim();
-        
+
         // Match test functions: def test_*(...):
         const functionMatch = trimmedLine.match(/^def\s+(test_\w*)\s*\(/);
         if (functionMatch) {
@@ -186,7 +185,7 @@ export class PythonTestParser {
             class: null,
             fullName: functionMatch[1],
             parametrized: false,
-            async: false
+            async: false,
           });
           continue;
         }
@@ -201,7 +200,7 @@ export class PythonTestParser {
             class: null,
             fullName: classMatch[1],
             parametrized: false,
-            async: false
+            async: false,
           });
           continue;
         }
@@ -216,7 +215,7 @@ export class PythonTestParser {
             class: null,
             fullName: asyncFunctionMatch[1],
             parametrized: false,
-            async: true
+            async: true,
           });
         }
       }
@@ -226,7 +225,6 @@ export class PythonTestParser {
       return [];
     }
   }
-
 }
 
 /**
