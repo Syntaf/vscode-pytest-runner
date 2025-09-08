@@ -3,11 +3,11 @@
   "displayName": "Pytest Runner",
   "description": "Simple way to run or debug Python tests using pytest from context-menu",
   "version": "0.1.0",
-  "publisher": "firsttris",
-  "author": "Tristan Teufel",
+  "publisher": "syntaf",
+  "author": "Grant Mercer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/firsttris/vscode-pytest-runner.git"
+    "url": "https://github.com/Syntaf/vscode-pytest-runner.git"
   },
   "license": "MIT",
   "icon": "public/icon.png",
