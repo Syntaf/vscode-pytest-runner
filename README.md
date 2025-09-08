@@ -1,122 +1,203 @@
-# vscode-jest-runner
+# vscode-pytest-runner
 
-Looking for collaborators to help me maintain the project. Please contact me at tristanteufel@gmail.com
+A simple and fast way to run or debug specific pytest tests directly from VS Code.
 
 ## Visual Studio Code Marketplace
 
-[VisualStudio Marketplace](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner)
-[Open VSX Registry](https://open-vsx.org/extension/firsttris/vscode-jest-runner)
+*Coming soon - this extension will be published to the VS Code Marketplace*
 
-## Comparison with [vscode-jest](https://github.com/jest-community/vscode-jest)
+## Comparison with other Python test extensions
 
-[vscode-jest-runner](https://github.com/firsttris/vscode-jest-runner) is focused on running or debugging a specific test or test-suite, while [vscode-jest](https://github.com/jest-community/vscode-jest) is running your current test-suite everytime you change it.
+`vscode-pytest-runner` is focused on **running or debugging a specific test** or test suite quickly and efficiently, while other extensions may focus on test discovery, continuous testing, or full test suite management. This extension prioritizes speed and simplicity.
 
 ## Features
 
-Simple way to run or debug a specific test
-*As it is possible in IntelliJ / Webstorm*
+Simple, fast way to run or debug specific pytest tests
+*Similar to the experience in PyCharm / IntelliJ*
 
-Run & Debug your Jest Tests from
-- Context-Menu
-- CodeLens
-- Command Palette (strg+shift+p)
+Run & Debug your pytest tests from:
+- **Context Menu** - Right-click on test files or functions
+- **CodeLens** - Inline "Run" and "Debug" buttons above test functions
+- **Command Palette** - `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac)
 
 ## Supports
-- yarn & vscode workspaces (monorepo)
-- dynamic jest config resolution
-- yarn 2 pnp
-- CRA & and similar abstractions
 
-![Extension Example](https://github.com/firsttris/vscode-jest/raw/master/public/vscode-jest.gif)
+- **Poetry projects** with automatic virtual environment detection
+- **Standard Python projects** with pip, conda, etc.
+- **Dynamic pytest configuration** resolution (`pytest.ini`, `pyproject.toml`, `setup.cfg`)
+- **Parametrized tests** and **async test functions**
+- **Test classes and methods**
+- **Workspace folders** and monorepos
 
-## Usage with CRA or similar abstractions
+![Extension Demo](https://github.com/grant.mercer/vscode-pytest-runner/raw/main/assets/demo.gif)
 
-add the following command to settings:
-```json
-"jestrunner.jestCommand": "npm run test --",
-"jestrunner.debugOptions": {
-    "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/react-scripts",
-    "runtimeArgs": [
-      "test",
-      "${fileBasename}",
-      "--runInBand",
-      "--no-cache",
-      "--watchAll=false",
-      "--color"
-    ]
-},
-```
+## Quick Start
+
+1. **Install the extension** from the VS Code marketplace
+2. **Open a Python project** with pytest tests
+3. **Click "Run" or "Debug"** CodeLens buttons above your test functions
+
+The extension works out of the box for most Python projects!
+
+## Poetry Projects
+
+For Poetry projects, the extension automatically:
+- Detects `pyproject.toml` files with `[tool.poetry]` sections
+- Uses `poetry run pytest` instead of direct `pytest` commands
+- Finds the correct virtual environment path
+- Supports Poetry dependency groups and configurations
 
 ## Extension Settings
 
-Jest Runner will work out of the box, with a valid Jest config.
-If you have a custom setup use the following options to customize Jest Runner:
+Pytest Runner works out of the box with standard pytest configurations. Use these settings for custom setups:
 
-| Command                                   | Description                                                                                                                                                 |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| jestrunner.configPath                     | Jest config path (string) (relative to `${workspaceFolder}` e.g. jest-config.json). Defaults to blank. Can also be a glob path mapping. See [below](#configpath-as-glob-map) for more details         |
-| jestrunner.jestPath                       | Absolute path to jest bin file (e.g. /usr/lib/node_modules/jest/bin/jest.js)                                                                                |
-| jestrunner.debugOptions                   | Add or overwrite vscode debug configurations (only in debug mode) (e.g. `"jestrunner.debugOptions": { "args": ["--no-cache"] }`)                            |
-| jestrunner.runOptions                     | Add CLI Options to the Jest Command (e.g. `"jestrunner.runOptions": ["--coverage", "--colors"]`) https://jestjs.io/docs/en/cli                              |
-| jestrunner.jestCommand                    | Define an alternative Jest command (e.g. for Create React App and similar abstractions)                                                                     |
-| jestrunner.disableCodeLens                | Disable CodeLens feature                                                                                                                                    |
-| jestrunner.codeLensSelector               | CodeLens will be shown on files matching this pattern (default **/*.{test,spec}.{js,jsx,ts,tsx})                                                            |
-| jestrunner.codeLens                       | Choose which CodeLens to enable, default to `["run", "debug"]`                                                                                              |
-| jestrunner.enableYarnPnpSupport           | Enable if you are using Yarn 2 with Plug'n'Play                                                                                                             |
-| jestrunner.yarnPnpCommand                 | Command for debugging with Plug'n'Play defaults to yarn-*.*js                                                                                               |
-| jestrunner.projectPath                    | Absolute path to project directory (e.g. /home/me/project/sub-folder), or relative path to workspace root (e.g. ./sub-folder)                               |
-| jestrunner.checkRelativePathForJest       | When looking for the nearest resolution for Jest, only check for package.json files, rather than the `node_modules` folder.                                 |
-| jestrunner.changeDirectoryToWorkspaceRoot | Changes directory before execution. The order is:<ol><li>`jestrunner.projectPath`</li><li>the nearest `package.json`</li><li>`${workspaceFolder}`</li></ol> |
-| jestrunner.preserveEditorFocus            | Preserve focus on your editor instead of focusing the terminal on test run                                                                                  |
-| jestrunner.runInExternalNativeTerminal    | run in external terminal (requires: npm install ttab -g)                                                                                                    |
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `pytestrunner.pytestPath` | Path to pytest executable | `pytest` |
+| `pytestrunner.usePoetry` | Enable Poetry integration | `true` |
+| `pytestrunner.poetryPath` | Path to Poetry executable | `poetry` |
+| `pytestrunner.configPath` | Path to pytest config file (pytest.ini, pyproject.toml, setup.cfg) | `""` |
+| `pytestrunner.pytestArgs` | Default pytest arguments | `["-v"]` |
+| `pytestrunner.virtualEnvPath` | Custom virtual environment path | `""` |
+| `pytestrunner.disableCodeLens` | Disable CodeLens feature | `false` |
+| `pytestrunner.codeLensSelector` | Pattern for files to show CodeLens | `**/{test_*.py,*_test.py}` |
+| `pytestrunner.codeLens` | Which CodeLens options to show | `["run", "debug"]` |
+| `pytestrunner.debugOptions` | VS Code debug configuration overrides | `{}` |
+| `pytestrunner.changeDirectoryToWorkspaceRoot` | Change to workspace root before running | `true` |
+| `pytestrunner.preserveEditorFocus` | Keep focus on editor after running tests | `false` |
 
-### configPath as glob map
-If you've got multiple jest configs for running tests (ie maybe a config for unit tests, integration tests and frontend tests) then this option is for you. You can provide a map of glob matchers to specify which jest config to use based on the name of the file the test is being run for. 
+### Example Configuration
 
-For instance, supose you're using the naming convention of `*.spec.ts` for unit tests and `*.it.spec.ts` for integration tests. You'd use the following for your configPath setting:
+For a custom Poetry setup:
 ```json
 {
-  "jestrunner.configPath": {
-    "**/*.it.spec.ts": "./jest.it.config.js",
-    "**/*.spec.ts": "./jest.unit.config.js"
+  "pytestrunner.usePoetry": true,
+  "pytestrunner.poetryPath": "/usr/local/bin/poetry",
+  "pytestrunner.pytestArgs": ["-v", "--tb=short"],
+  "pytestrunner.codeLensSelector": "**/test_*.py"
+}
+```
+
+For a standard pip environment:
+```json
+{
+  "pytestrunner.usePoetry": false,
+  "pytestrunner.pytestPath": "/home/user/.local/bin/pytest",
+  "pytestrunner.virtualEnvPath": "/home/user/myproject/.venv"
+}
+```
+
+### Config Path as Glob Map
+
+You can specify different pytest configs for different test types using glob patterns:
+
+```json
+{
+  "pytestrunner.configPath": {
+    "**/integration/**/*.py": "./pytest.integration.ini",
+    "**/unit/**/*.py": "./pytest.unit.ini",
+    "**/*_test.py": "./pytest.default.ini"
   }
 }
 ```
-Note the order we've specified the globs in this example. Because our naming convention has a little overlap, we need to specify the more narrow glob first because jestrunner will return the config path of the first matching glob. With the above order, we make certain that `jest.it.config.js` will be used for any file ending with `.it.spec.ts` and `jest.unit.config.js` will be used for files that only end in `*.spec.ts` (without `.it.`).  If we had reversed the order, `jest.unit.config.js` would be used for both `*.it.spec.ts` and `*.spec.ts` endings the glob matches both. 
 
-## Shortcuts
+Note: More specific patterns should come first, as the extension uses the first matching pattern.
 
-Command Pallette -> Preferences: Open Keyboard Shortcuts (JSON)
-the json config file will open
-add this:
+## Keyboard Shortcuts
+
+Add these shortcuts via **Command Palette** → **Preferences: Open Keyboard Shortcuts (JSON)**:
 
 ```json
-{
-  "key": "alt+1",
-  "command": "extension.runJest"
-},
-{
-  "key": "alt+2",
-  "command": "extension.debugJest"
-},
-{
-  "key": "alt+3",
-  "command": "extension.watchJest"
-},
-{
-  "key": "alt+4",
-  "command": "extension.runPrevJest"
-}
+[
+  {
+    "key": "alt+1",
+    "command": "extension.runPytest"
+  },
+  {
+    "key": "alt+2", 
+    "command": "extension.debugPytest"
+  },
+  {
+    "key": "alt+3",
+    "command": "extension.runPytestFile"
+  },
+  {
+    "key": "alt+4",
+    "command": "extension.runPrevPytest"
+  }
+]
 ```
 
-## Want to start contributing features?
+## Requirements
 
-[Check some open topics get you started](https://github.com/firsttris/vscode-jest-runner/issues)
+- **Python** 3.6+ installed and accessible in PATH
+- **pytest** installed in your project (`pip install pytest` or `poetry add pytest`)
+- **VS Code Python Extension** (recommended but not required)
 
-### Steps to run Extension in development mode
+### For Poetry Projects
+- **Poetry** installed and accessible in PATH
+- Valid `pyproject.toml` with `[tool.poetry]` section
 
-- Clone Repo
-- npm install
-- Go to Menu "Run" => "Start Debugging"
+## Supported Test File Patterns
 
-Another vscode instance will open with the just compiled extension installed.
+The extension automatically recognizes these test file patterns:
+- `test_*.py` (e.g., `test_example.py`)
+- `*_test.py` (e.g., `example_test.py`) 
+- Files containing `test` in the name
+
+And these test function/class patterns:
+- `def test_*()` - Test functions
+- `async def test_*()` - Async test functions  
+- `class Test*` - Test classes
+
+## Development
+
+Want to contribute? Here's how to set up the development environment:
+
+### Prerequisites
+- **Node.js** 16+ and **npm**
+- **VS Code** with Extension Development Host
+
+### Steps to run in development mode
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/grant.mercer/vscode-pytest-runner.git
+   cd vscode-pytest-runner
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start debugging**
+   - Open the project in VS Code
+   - Press `F5` or go to **Run** → **Start Debugging**
+   - A new VS Code window opens with the extension loaded
+
+### Build Commands
+
+- `npm run compile` - Compile TypeScript
+- `npm run watch` - Watch mode for development
+- `npm run lint` - Run ESLint
+- `npm run test` - Run test suite
+- `npm run package` - Package the extension
+
+## Contributing
+
+Issues and pull requests are welcome! Check out the [open issues](https://github.com/grant.mercer/vscode-pytest-runner/issues) to get started.
+
+### Areas where help is needed:
+- Additional pytest configuration support
+- Windows compatibility testing  
+- Performance optimizations
+- Documentation improvements
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
